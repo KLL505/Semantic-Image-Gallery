@@ -58,4 +58,4 @@ with gr.Blocks( title="Local Image Search") as app:
 
 
 if __name__ == "__main__":
-    app.launch(theme=gr.themes.Soft(), share=true)
+    app.launch(theme=gr.themes.Soft(), share=True)
