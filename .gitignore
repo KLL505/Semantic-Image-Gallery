@@ -1,3 +1,4 @@
 /.gradio
 /paths.json
 /__pycache__
+.vscode

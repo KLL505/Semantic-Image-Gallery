@@ -1,0 +1,21 @@
+# environment.yml
+name: image-search-app
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10
+  - numpy<2.0.0
+  - pytorch
+  - torchvision
+  - faiss-cpu
+  - pip
+  - pip:
+      - transformers==4.57.3
+      - huggingface-hub
+      - pillow==11.3.0
+      - gradio==6.10.0
+      - ftfy
+      - regex
+      - tqdm
+      - git+https://github.com/openai/CLIP.git
