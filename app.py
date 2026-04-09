@@ -3,6 +3,8 @@ import gradio as gr
 from searcher import Searcher
 from indexer import Indexer
 
+index_backend = Indexer()
+
 #Only build the index on startup if the database file is missing
 if not os.path.exists("embeddings.faiss"):
     print("Database not found. Building index for the first time...")
