@@ -42,8 +42,8 @@ class Indexer:
             return
         
         #Load standard CLIP model and processor here
-        self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
-        self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+        model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
+        processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
         print("Generating embeddings with CLIP... this might take a moment.")
         embeddings_list = []
@@ -52,11 +52,11 @@ class Indexer:
             try:
                 #Open and process the image
                 image = Image.open(path).convert("RGB")
-                inputs = self.processor(images=image, return_tensors="pt").to(self.device)
+                inputs = processor(images=image, return_tensors="pt").to(self.device)
                 
                 #Get image features (embeddings) without tracking gradients
                 with torch.no_grad():
-                    image_features = self.model.get_image_features(**inputs)
+                    image_features = model.get_image_features(**inputs)
                 
                 #Normalize the embeddings (Cosine Similarity in FAISS)
                 image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
