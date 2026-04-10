@@ -2,3 +2,4 @@
 /paths.json
 /__pycache__
 .vscode
+embeddings.faiss
