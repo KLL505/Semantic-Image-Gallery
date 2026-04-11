@@ -29,6 +29,9 @@ conda env update --file environment.yml  --prune
 # 4. Run Application
 python app.py
 
+# 4.1 Run Application on Watch Mode
+gradio app.py
+
 # 5. Open Application (server name and port are hard-coded in app.py)
 http://127.0.0.1:7860
 
