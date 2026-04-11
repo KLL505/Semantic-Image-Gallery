@@ -7,8 +7,6 @@ class Searcher:
     def __init__(self, paths_file="paths.json", index_file="embeddings.faiss"):
         self.paths_file = paths_file # filename of list of image paths
         self.index_file = index_file # filename of embedding database
-        self.image_paths = [] # list of image paths
-        self.embedding_index = None # actual embedding database
 
         # device setup
         if torch.cuda.is_available():
