@@ -4,7 +4,7 @@ import faiss
 from transformers import CLIPProcessor, CLIPModel
 
 class Searcher:
-    def __init__(self, device, model, processor, paths_file="paths.json", index_file="embeddings.faiss"):
+    def __init__(self, device, model, processor, paths_file="./data/paths.json", index_file="./data/embeddings.faiss"):
         self.paths_file = paths_file # filename of list of image paths
         self.index_file = index_file # filename of embedding database
         self.image_paths = [] # list of image paths

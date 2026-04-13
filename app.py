@@ -2,10 +2,10 @@ import os
 import gradio as gr
 import torch
 from transformers import CLIPProcessor, CLIPModel
-from searcher import Searcher
-from indexer import Indexer
-from grapher import Grapher
-from graph_component import generate_html_plot
+from src.searcher import Searcher
+from src.indexer import Indexer
+from src.grapher import Grapher
+from src.graph_component import generate_html_plot
 
 #initializes backend classes with shared model and processor instances to save memory and load time. Also handles device setup for GPU/CPU/MPS.
 def initialize_backend():
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     index_backend = Indexer(*initialize_backend())
 
     #Only build the index on startup if the database file is missing
-    if not os.path.exists("embeddings.faiss"):
+    if not os.path.exists("./data/embeddings.faiss"):
         print("Database not found. Building index for the first time...")
         index_backend.build_Index()
     else:

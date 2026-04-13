@@ -1,5 +1,4 @@
 /.gradio
-/paths.json
-/__pycache__
+*__pycache__
 .vscode
-embeddings.faiss
+/data
