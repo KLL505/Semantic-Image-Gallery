@@ -105,6 +105,7 @@ if __name__ == "__main__":
     #Only build the index on startup if the database file is missing
     if not os.path.exists("./data/embeddings.faiss"):
         print("Database not found. Building index for the first time...")
+        os.makedirs("./data", exist_ok=True)
         index_backend.build_Index()
     else:
         print("Database found. Skipping initial build.")
