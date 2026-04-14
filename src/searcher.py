@@ -16,11 +16,17 @@ class Searcher:
         # initial sync
         self.reload_index()
 
+    '''
+    Searches for top_k images using query
+    :query: str|Image
+    :top_k: number
+    :return: list of image paths
+    '''
     def search(self, query, top_k=3):
         print(f"Recieved query='{query}' and top_k={top_k}")
 
-        # base case: if the search box is empty, show everything
-        if not query.strip():
+        # base case: if the search query is empty, show everything
+        if query is None or (isinstance(query, str) and not query.strip()):
             return self.image_paths
     
         # base case: if the embedding index is empty, show nothing
@@ -29,22 +35,27 @@ class Searcher:
 
         # since we are using the model and not training it, we don't need to track gradients to save memory
         with torch.no_grad():
-            #todo: I believe we will handle image search one day
-            # call the processor with text
-            inputs = self.processor(text=[query], return_tensors="pt", padding=True)
-            # move to device, safer than self.processor().to(self.device)
-            inputs = { k: v.to(self.device) for k, v in inputs.items() }
-
-            # extract features from the text encoder
-            text_features = self.model.get_text_features(**inputs)
+            # call the processor
+            # move the inputs to device, safer than self.processor().to(self.device)
+            # extract features from the encoder
+            if isinstance(query, str):
+                # query with text
+                inputs = self.processor(text=[query], return_tensors="pt", padding=True)
+                inputs = { k: v.to(self.device) for k, v in inputs.items() }
+                features = self.model.get_text_features(**inputs)
+            else:
+                # query with image
+                inputs = self.processor(images=query, return_tensors="pt")
+                inputs = { k: v.to(self.device) for k, v in inputs.items() }
+                features = self.model.get_image_features(**inputs)
 
             # normalize the vector to prepare for cosine similarity
-            text_features /= text_features.norm(dim=-1, keepdim=True)
+            features /= features.norm(dim=-1, keepdim=True)
 
             # text_features is a tensor on self.device
             # we need to move it back to CPU because FAISS works on CPU
             # FAISS also works with numpy array and not tensor, so we need to convert back to numpy array
-            query_vector = text_features.cpu().numpy().astype('float32')
+            query_vector = features.cpu().numpy().astype('float32')
 
         # search nearest k neighbors
         # dim(indices) = (num_queries, top_k). in this case, num_queries = 1 since we only have 1 query string
@@ -56,8 +67,11 @@ class Searcher:
 
         return results
 
+    '''
+    Loads image paths and embedding database into memory
+    '''
     def reload_index(self):
-        # loads the image paths from the paths file into memory
+        # loads the image paths from the paths
         try:
             with open(self.paths_file, "r") as f:
                 self.image_paths = json.load(f)
@@ -66,7 +80,7 @@ class Searcher:
             self.image_paths = []
             print(f"Warning: {self.paths_file} missing or corrupt.")
         
-        # loads the embedding database into memory
+        # loads the embedding database
         try:
             self.embedding_index = faiss.read_index(self.index_file)
             print(f"Index reloaded: {self.embedding_index.ntotal} images available")
