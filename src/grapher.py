@@ -48,7 +48,7 @@ class Grapher:
         x_scores = (image_vectors @ vec_x.T).flatten()
         y_scores = (image_vectors @ vec_y.T).flatten()
 
-        # Build a Pandas DataFrame formatting the data for Gradio's ScatterPlot
+        # Build a Pandas DataFrame formatting the data
         df = pd.DataFrame({
             "Image": self.searcher.image_paths[:ntotal],
             x_axis_text: x_scores,

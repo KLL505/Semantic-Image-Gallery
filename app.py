@@ -37,7 +37,7 @@ def rebuild_index():
 def update_latent_plot(x_text, y_text):
     df = graph_backend.generate_plot_data(x_text, y_text)
     if df.empty:
-        return "<div style='text-align:center; padding:50px;'>Not enough data to plot. Check your index.</div>"
+        return "<div style='text-align:center; padding:50px;'>Not enough data to plot.</div>"
 
     html_plot = generate_html_plot(df, x_text, y_text)
     return html_plot
@@ -84,19 +84,19 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Local Image Search") as app:
             # Initial load sends blank search to show all images
             app.load(fn=perform_search, inputs=[search_query, top_k_slider], outputs=results_gallery) 
 
-        with gr.Tab("Latent Space Explorer"):
-                    gr.Markdown("Map your images across two distinct semantic concepts.")
-                    with gr.Row():
-                        x_axis_input = gr.Textbox(label="X-Axis",placeholder="Nature", scale=2)
-                        y_axis_input = gr.Textbox(label="Y-Axis",placeholder="Industrial", scale=2)
-                        plot_btn = gr.Button("Map Latent Space", variant="primary", scale=1)
-                    
-                    with gr.Row():
-                        latent_plot = gr.HTML(label="Latent Space")
-                        
-                    plot_btn.click(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input], outputs=latent_plot)
-                    x_axis_input.submit(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input], outputs=latent_plot)
-                    y_axis_input.submit(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input], outputs=latent_plot)
+        with gr.Tab("Latent Space Graph"):
+            gr.Markdown("Map your images across two distinct semantic concepts.")
+            with gr.Row():
+                x_axis_input = gr.Textbox(label="X-Axis",placeholder="Nature", scale=2)
+                y_axis_input = gr.Textbox(label="Y-Axis",placeholder="Industrial", scale=2)
+                plot_btn = gr.Button("Map Latent Space", variant="primary", scale=1)
+            
+            with gr.Row():
+                latent_plot = gr.HTML(label="Latent Space")
+                
+            plot_btn.click(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input], outputs=latent_plot)
+            x_axis_input.submit(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input], outputs=latent_plot)
+            y_axis_input.submit(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input], outputs=latent_plot)
 
 
 if __name__ == "__main__":
