@@ -6,18 +6,16 @@ import faiss
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel
 
-
 class Indexer:
 
     def __init__(self, device, model, processor, image_dir="./images", paths_file="./data/paths.json", index_file="./data/embeddings.faiss"):
         self.image_dir = image_dir
         self.paths_file = paths_file
         self.index_file = index_file
-
+        
         self.device = device
         self.model = model
         self.processor = processor
-
 
     #Builds paths file by scanning image directory for supported formats and saving their paths to a JSON file.
     def build_paths(self):
@@ -32,42 +30,55 @@ class Indexer:
         with open(self.paths_file, "w") as f:
             json.dump(image_paths, f)
 
-        print(f"Found {len(image_paths)} images, Paths saved to {self.paths_file}.")
+        print(f"Found {len(image_paths)} images. Paths saved to {self.paths_file}.")
         return image_paths
 
-    def build_Index(self):
-        image_paths = self.build_paths()
+    def build_Index(self, batch_size=32):
+        all_paths = self.build_paths()
+        
+        #LIMIT TO FIRST 1000 IMAGES for testing
+        image_paths = all_paths[:1000]
         
         if not image_paths:
             print("No images found to index. Skipping index building.")
             return
+        
+        #Load standard CLIP model and processor here
+        model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
+        processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
-        print("Generating embeddings with CLIP... this might take a moment.")
+        print(f"Indexing a subset of {len(image_paths)} images in batches of {batch_size}...")
         embeddings_list = []
         
-        for path in image_paths:
+        for i in range(0, len(image_paths), batch_size):
+            #Slicing: takes images from i to i + 32
+            batch_paths = image_paths[i : i + batch_size] 
+            batch_images = []
+            
+            for path in batch_paths:
+                try:
+                    #Open and process the image
+                    image = Image.open(path).convert("RGB")
+                    batch_images.append(image)
+                except Exception as e:
+                    print(f"Error loading {path}: {e}")
+                    
+            if not batch_images:
+                continue
+                
             try:
-                #Open and process the image
-                image = Image.open(path).convert("RGB")
-                inputs = self.processor(images=image, return_tensors="pt").to(self.device)
-                
-                #Get image features (embeddings) without tracking gradients
+                #Processes the actual batch of 32
+                inputs = self.processor(images=batch_images, return_tensors="pt").to(self.device)
                 with torch.no_grad():
-                    image_features = self.model.get_image_features(**inputs)
+                    batch_features = self.model.get_image_features(**inputs)
                 
-                #Normalize the embeddings (Cosine Similarity in FAISS)
-                image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
+                batch_features = batch_features / batch_features.norm(p=2, dim=-1, keepdim=True)
+                embeddings_list.extend(batch_features.cpu().numpy().astype('float32'))
                 
-                #Extract 1D numpy array
-                embedding = image_features.cpu().numpy()[0]
-                embeddings_list.append(embedding)
+                print(f"Progress: {min(i + batch_size, len(image_paths))} / {len(image_paths)}")
                 
             except Exception as e:
-                print(f"Error processing image {path}: {e}")
-        
-        if not embeddings_list:
-            print("Failed to generate any embeddings.")
-            return
+                print(f"Batch error at {i}: {e}")
 
         #Convert to a single 2D numpy matrix of float32
         embeddings_matrix = np.array(embeddings_list).astype('float32')
