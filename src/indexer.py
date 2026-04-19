@@ -8,7 +8,7 @@ from transformers import CLIPProcessor, CLIPModel
 
 class Indexer:
 
-    def __init__(self, device, model, processor, image_dir="./test_images", paths_file="./data/paths.json", index_file="./data/embeddings.faiss"):
+    def __init__(self, device, model, processor, image_dir="./images", paths_file="./data/paths.json", index_file="./data/embeddings.faiss"):
         self.image_dir = image_dir
         self.paths_file = paths_file
         self.index_file = index_file
