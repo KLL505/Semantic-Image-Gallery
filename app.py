@@ -18,68 +18,56 @@ def format_gallery_results(paths, all_paths):
         filename = os.path.basename(path)
         caption = f"{filename} | {idx} "
         results.append((path, caption))
-    return results
+    info_txt = f"<div style='text-align: right; font-size: 0.9em; color: #6b7280; padding-top: 4px; padding-right: 8px;'>Model: {settings.current_model_id} | Total Images: {len(paths)}</div>"
+    return results, info_txt
 
 def perform_search(text_query, image_query, top_k):
     top_k = int(top_k)
     if image_query is not None:
         paths = search_backend.search(image_query, top_k)
     else:
-        paths = search_backend.search(text_query, top_k)
-        
-    # Format the gallery tuples
-    gallery_data = format_gallery_results(paths, search_backend.image_paths)
+        paths = search_backend.search(text_query, top_k, settings.max_results_empty)
     
-    total_count = f"<div style='text-align: right; font-size: 0.9em; color: #6b7280; padding-top: 4px; padding-right: 8px;'>Model: {settings.current_model_id} | Total Images: {len(search_backend.image_paths)}</div>"
-    
-    return gallery_data, total_count
+    return format_gallery_results(paths, search_backend.image_paths)
 
 def rebuild_index():
-    index_backend.build_Index()
+    index_backend.build_Index(settings.batch_size, settings.max_index_images)
     search_backend.reload_index()
     
-    # Show all images after a rebuild
     paths = search_backend.image_paths
-    gallery_data = format_gallery_results(paths, paths)
     
-    total_count = f"<div style='text-align: right; font-size: 0.9em; color: #6b7280; padding-top: 4px; padding-right: 8px;'>Model: {settings.current_model_id} | Total Images: {len(paths)}</div>"
-    
-    return gallery_data, total_count
+    return format_gallery_results(paths, paths)
 
-def update_latent_plot(x_text, y_text, offset):
-    df = graph_backend.generate_plot_data(x_text, y_text, offset)
-    if df.empty:
-        return "<div style='text-align:center; padding:50px;'>Not enough data to plot or offset out of bounds.</div>"
-
-    html_plot = generate_html_plot(df, x_text, y_text)
-    return html_plot
-
-def change_model_and_rebuild(new_model_id):
+def change_settings_and_rebuild(new_model_id, empty_max, batch_size, max_index):
     global index_backend, search_backend, graph_backend
     
     if not new_model_id or not new_model_id.strip():
         new_model_id = "openai/clip-vit-base-patch32"
         
     new_model_id = new_model_id.strip()
-    print(f"Switching model to: {new_model_id}")
     
-    # Use the class to save the setting and initialize the new hardware/model
-    settings.save_settings(new_model_id)
-    device, model, processor = settings.initialize_backend(new_model_id)
+    settings.save_settings(new_model_id, empty_max, batch_size, max_index)
+    device, model, processor = settings.initialize_model(new_model_id)
     
     index_backend = Indexer(device, model, processor)
     search_backend = Searcher(device, model, processor)
     graph_backend = Grapher(device, model, processor, search_backend)
     
-    index_backend.build_Index()
+    index_backend.build_Index(settings.batch_size, settings.max_index_images)
     search_backend.reload_index()
     
-    paths = search_backend.image_paths
-    gallery_data = format_gallery_results(paths, paths)
+    paths = search_backend.search("", 3, settings.max_results_empty)
     
-    total_count = f"<div style='text-align: right; font-size: 0.9em; color: #6b7280; padding-top: 4px; padding-right: 8px;'>Model: {settings.current_model_id} | Total Images: {len(paths)}</div>"
-    
-    return gallery_data, total_count
+    return format_gallery_results(paths, paths)
+
+
+def generate_graph(x_text, y_text, offset):
+    df = graph_backend.generate_plot_data(x_text, y_text, offset)
+    if df.empty:
+        return "<div style='text-align:center; padding:50px;'>Not enough data to plot or offset out of bounds.</div>"
+
+    html_plot = generate_html_plot(df, x_text, y_text)
+    return html_plot
 
 # -------------------------------------------------------------------
 # Gradio Interface
@@ -152,41 +140,60 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Local Image Search", fill_height=T
             with gr.Row():
                 latent_plot = gr.HTML(label="Latent Space")
                 
-            plot_btn.click(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
-            x_axis_input.submit(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
-            y_axis_input.submit(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
-            offset_input.submit(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
-            
+            plot_btn.click(fn=generate_graph, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
+            x_axis_input.submit(fn=generate_graph, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
+            y_axis_input.submit(fn=generate_graph, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
+            offset_input.submit(fn=generate_graph, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
+
 # -------------------------------------------------------------------
 # Settings
 # -------------------------------------------------------------------
         with gr.Tab("Settings"):
-            gr.Markdown("### Application Settings")
-            with gr.Row():
-                with gr.Column(scale=2):
-                    model_input = gr.Textbox(
-                        label="Hugging Face Model ID", 
-                        value=settings.current_model_id, # Pull from the class on boot
-                        info="Warning: Changing the model will completely overwrite your current FAISS database. It may take a moment to download new weights and re-embed all images."
+                    gr.Markdown("### Application Settings")
+                    with gr.Row():
+                        with gr.Column(scale=2):
+                            model_input = gr.Textbox(
+                                label="Hugging Face Model ID", 
+                                value=settings.current_model_id, 
+                                info="Warning: Changing the model will completely overwrite your current FAISS database."
+                            )
+                            empty_max_input = gr.Number(
+                                label="Max Results on Empty Search",
+                                value=settings.max_results_empty,
+                                precision=0,
+                                info="How many images to display when the search query is blank."
+                            )
+                            batch_size_input = gr.Number(
+                                label="Index Batch Size",
+                                value=settings.batch_size,
+                                precision=0,
+                                info="Number of images to process at once. Lower this if your GPU runs out of memory."
+                            )
+                            max_index_input = gr.Number(
+                                label="Max Images to Index",
+                                value=settings.max_index_images,
+                                precision=0,
+                                info="Limit the total number of images read from the directory."
+                            )
+                        with gr.Column(scale=1):
+                            apply_btn = gr.Button("Apply & Rebuild Index", variant="primary")
+                            status_text = gr.Markdown("") 
+                            
+                    apply_btn.click(
+                        fn=lambda: "**Status:** Applying settings and rebuilding database... Please wait.", 
+                        outputs=[status_text]
+                    ).then(
+                        fn=change_settings_and_rebuild, 
+                        # Be sure to pass all inputs here!
+                        inputs=[model_input, empty_max_input, batch_size_input, max_index_input], 
+                        outputs=[results_gallery, total_count_display]
+                    ).then(
+                        fn=lambda: "**Status:** Success! Settings saved and index rebuilt.", 
+                        outputs=[status_text]
                     )
-                with gr.Column(scale=1):
-                    apply_btn = gr.Button("Apply & Rebuild Index", variant="primary")
-                    status_text = gr.Markdown("") 
-                    
-            apply_btn.click(
-                fn=lambda: "**Status:** Loading new model and rebuilding database... Please wait.", 
-                outputs=[status_text]
-            ).then(
-                fn=change_model_and_rebuild, 
-                inputs=[model_input], 
-                outputs=[results_gallery, total_count_display]
-            ).then(
-                fn=lambda: "**Status:** Success! New model loaded and index rebuilt.", 
-                outputs=[status_text]
-            )
 
 if __name__ == "__main__":
-    shared_device, shared_model, shared_processor = settings.initialize_backend()
+    shared_device, shared_model, shared_processor = settings.initialize_model()
     
     index_backend = Indexer(shared_device, shared_model, shared_processor)
 
