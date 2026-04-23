@@ -1,30 +1,12 @@
 import os
 import gradio as gr
-import torch
-from transformers import CLIPProcessor, CLIPModel
 from src.searcher import Searcher
 from src.indexer import Indexer
 from src.grapher import Grapher
 from src.graph_component import generate_html_plot
+from src.settings import Settings
 
-# initializes backend classes with shared model and processor instances to save memory and load time. Also handles device setup for GPU/CPU/MPS.
-def initialize_backend():
-    # device setup
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
-    else:
-        device = torch.device("cpu")
-    print(f"Using {device} device")
-
-    # load CLIP model and processor
-    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
-    processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-    model.eval()
-    processor.use_fast = False
-
-    return device, model, processor
+settings = Settings()
 
 def format_gallery_results(paths, all_paths):
     results = []
@@ -36,37 +18,46 @@ def format_gallery_results(paths, all_paths):
         filename = os.path.basename(path)
         caption = f"{filename} | {idx} "
         results.append((path, caption))
-    return results
+    info_txt = f"<div style='text-align: right; font-size: 0.9em; color: #6b7280; padding-top: 4px; padding-right: 8px;'>Model: {settings.current_model_id} | Total Images: {min(settings.max_index_images ,len(all_paths))}</div>"
+    return results, info_txt
 
 def perform_search(text_query, image_query, top_k):
     top_k = int(top_k)
     if image_query is not None:
         paths = search_backend.search(image_query, top_k)
     else:
-        paths = search_backend.search(text_query, top_k)
-        
-    # Format the gallery tuples
-    gallery_data = format_gallery_results(paths, search_backend.image_paths)
+        paths = search_backend.search(text_query, top_k, settings.max_results_empty)
     
-    total_count = f"<div style='text-align: right; font-size: 0.9em; color: #6b7280; padding-top: 4px; padding-right: 8px;'>Total Images: {len(search_backend.image_paths)}</div>"
-    
-    return gallery_data, total_count
+    return format_gallery_results(paths, search_backend.image_paths)
 
 def rebuild_index():
-    index_backend.build_Index()
+    index_backend.build_Index(settings.batch_size, settings.max_index_images)
     search_backend.reload_index()
     
-    # Show all images after a rebuild
-    paths = search_backend.image_paths
-    gallery_data = format_gallery_results(paths, paths)
+    paths = search_backend.image_paths[:settings.max_results_empty]
     
-    # Generate clean, right-aligned HTML for the total count
-    total_count = f"<div style='text-align: right; font-size: 0.9em; color: #6b7280; padding-top: 4px; padding-right: 8px;'>Total Images: {len(paths)}</div>"
-    
-    return gallery_data, total_count
+    return format_gallery_results(paths, paths)
 
-def update_latent_plot(x_text, y_text, offset):
-    df = graph_backend.generate_plot_data(x_text, y_text, offset)
+def change_settings_and_rebuild(new_model_id, img_dir, empty_max, batch_size, max_index, max_graph):
+    global index_backend, search_backend, graph_backend
+    
+    if not new_model_id or not new_model_id.strip():
+        new_model_id = "openai/clip-vit-base-patch32"
+        
+    new_model_id = new_model_id.strip()
+    
+    settings.save_settings(new_model_id, img_dir, empty_max, batch_size, max_index, max_graph)
+    device, model, processor = settings.initialize_model(new_model_id)
+    
+    index_backend = Indexer(device, model, processor, settings.img_dir)
+    search_backend = Searcher(device, model, processor)
+    graph_backend = Grapher(device, model, processor, search_backend)
+    
+    return rebuild_index()
+
+
+def generate_graph(x_text, y_text, offset):
+    df = graph_backend.generate_plot_data(x_text, y_text, offset, settings.max_graph_images)
     if df.empty:
         return "<div style='text-align:center; padding:50px;'>Not enough data to plot or offset out of bounds.</div>"
 
@@ -78,7 +69,10 @@ def update_latent_plot(x_text, y_text, offset):
 # -------------------------------------------------------------------
 with gr.Blocks(theme=gr.themes.Soft(), title="Local Image Search", fill_height=True) as app:
     gr.Markdown("# Local Semantic Image Search")
-    
+
+# -------------------------------------------------------------------
+# Search
+# -------------------------------------------------------------------    
     with gr.Tabs():
         with gr.Tab("Semantic Search"):
             with gr.Row():
@@ -127,8 +121,10 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Local Image Search", fill_height=T
             # Initial load sends blank search to show all images
             app.load(fn=perform_search, inputs=[search_query, image_query, top_k_slider], outputs=[results_gallery, total_count_display]) 
 
+# -------------------------------------------------------------------
+# Graph
+# -------------------------------------------------------------------
         with gr.Tab("Latent Space Graph"):
-            gr.Markdown("Map your images across two distinct semantic concepts (Max 500 images per batch).")
             with gr.Row():
                 x_axis_input = gr.Textbox(label="X-Axis",placeholder="Nature", scale=2)
                 y_axis_input = gr.Textbox(label="Y-Axis",placeholder="Industrial", scale=2)
@@ -138,15 +134,74 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Local Image Search", fill_height=T
             with gr.Row():
                 latent_plot = gr.HTML(label="Latent Space")
                 
-            plot_btn.click(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
-            x_axis_input.submit(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
-            y_axis_input.submit(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
-            offset_input.submit(fn=update_latent_plot, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
+            plot_btn.click(fn=generate_graph, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
+            x_axis_input.submit(fn=generate_graph, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
+            y_axis_input.submit(fn=generate_graph, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
+            offset_input.submit(fn=generate_graph, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
+
+# -------------------------------------------------------------------
+# Settings
+# -------------------------------------------------------------------
+        with gr.Tab("Settings"):
+                    gr.Markdown("### Application Settings")
+                    with gr.Row():
+                        with gr.Column(scale=2):
+                            model_input = gr.Textbox(
+                                label="Hugging Face Model ID", 
+                                value=settings.current_model_id, 
+                                info="Warning: Changing the model will completely overwrite your current FAISS database."
+                            )
+                            img_dir_input = gr.Textbox(
+                                label="Image Directoy Path", 
+                                value=settings.img_dir, 
+                                info="Image directory path application will load from"
+                            )
+                            empty_max_input = gr.Number(
+                                label="Max Results on Empty Search",
+                                value=settings.max_results_empty,
+                                precision=0,
+                                info="How many images to display when the search query is blank."
+                            )
+                            batch_size_input = gr.Number(
+                                label="Index Batch Size",
+                                value=settings.batch_size,
+                                precision=0,
+                                info="Number of images to process at once. Lower this if your GPU runs out of memory."
+                            )
+                            max_index_input = gr.Number(
+                                label="Max Images to Index",
+                                value=settings.max_index_images,
+                                precision=0,
+                                info="Limit the total number of images read from the directory."
+                            )
+                            max_graph_input = gr.Number(
+                                label="Max Images to Graph",
+                                value=settings.max_graph_images,
+                                precision=0,
+                                info="Limit the total number of images top graph."
+                            )
+                        with gr.Column(scale=1):
+                            apply_btn = gr.Button("Apply & Rebuild Index", variant="primary")
+                            status_text = gr.Markdown("") 
+                            
+                    apply_btn.click(
+                        fn=lambda: "Applying settings and rebuilding database... Please wait.", 
+                        outputs=[status_text]
+                    ).then(
+                        fn=change_settings_and_rebuild, 
+                        # Be sure to pass all inputs here!
+                        inputs=[model_input, img_dir_input, empty_max_input, batch_size_input, max_index_input, max_graph_input], 
+                        outputs=[results_gallery, total_count_display]
+                    ).then(
+                        fn=lambda: "Success! Settings saved and index rebuilt.", 
+                        outputs=[status_text]
+                    )
 
 if __name__ == "__main__":
-    index_backend = Indexer(*initialize_backend())
+    shared_device, shared_model, shared_processor = settings.initialize_model()
+    
+    index_backend = Indexer(shared_device, shared_model, shared_processor, settings.img_dir)
 
-    # Only build the index on startup if the database file is missing
     if not os.path.exists("./data/embeddings.faiss"):
         print("Database not found. Building index for the first time...")
         os.makedirs("./data", exist_ok=True)
@@ -154,7 +209,7 @@ if __name__ == "__main__":
     else:
         print("Database found. Skipping initial build.")
 
-    search_backend = Searcher(*initialize_backend())
-    graph_backend = Grapher(*initialize_backend(), search_backend)
+    search_backend = Searcher(shared_device, shared_model, shared_processor)
+    graph_backend = Grapher(shared_device, shared_model, shared_processor, search_backend)
 
     app.launch(server_name="127.0.0.1", server_port=7860, share=True)

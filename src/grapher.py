@@ -8,7 +8,7 @@ class Grapher:
         self.processor = processor
         self.searcher = searcher
 
-    def generate_plot_data(self, x_axis_text, y_axis_text, offset=0):
+    def generate_plot_data(self, x_axis_text, y_axis_text, offset=0, max_graph_images=500):
         # Base case: missing inputs or empty database
         if not x_axis_text or not y_axis_text:
             return pd.DataFrame() 
@@ -40,7 +40,7 @@ class Grapher:
         # Calculate bounding indices for the 500 image limit and offset
         ntotal = self.searcher.embedding_index.ntotal
         start_idx = min(max(0, offset), ntotal)
-        end_idx = min(start_idx + 500, ntotal)
+        end_idx = min(start_idx + max_graph_images, ntotal)
         
         # If the offset pushes past available images, return empty
         if start_idx == end_idx:
