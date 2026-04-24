@@ -10,6 +10,7 @@ dependencies:
   - torchvision
   - faiss-cpu
   - pandas
+  - scikit-learn
   - pip
   - pip:
       - transformers==4.57.3

@@ -5,6 +5,10 @@ from src.indexer import Indexer
 from src.grapher import Grapher
 from src.graph_component import generate_html_plot
 from src.settings import Settings
+from evaluator import SystemEvaluator
+import json
+import numpy as np
+from ground_truth_generator import initialize_ground_truth
 
 settings = Settings()
 
@@ -63,6 +67,24 @@ def generate_graph(x_text, y_text, offset):
 
     html_plot = generate_html_plot(df, x_text, y_text)
     return html_plot
+
+def run_evaluation():
+    with open("data/ground_truth.json", "r") as f:
+        gt = json.load(f)
+    evaluator = SystemEvaluator(search_backend)
+    df, latencies = evaluator.run_benchmark(gt)
+    print('df',df)
+    avg_map = df['mAP'].mean()
+    avg_latency = df['Latency (ms)'].mean()
+    latency_std = np.std(latencies)
+    qps = 1000 / avg_latency if avg_latency > 0 else 0
+    summary = (
+        f"### System Performance Summary\n"
+        f"- **Mean mAP:** {avg_map:.3f}\n"
+        f"- **Mean Latency:** {avg_latency:.2f} ms (±{latency_std:.2f}ms)\n"
+        f"- **System Throughput:** {qps:.2f} Queries/Sec"
+    )
+    return gr.Dataframe(value=df, visible=True), summary
 
 # -------------------------------------------------------------------
 # Gradio Interface
@@ -197,6 +219,35 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Local Image Search", fill_height=T
                         outputs=[status_text]
                     )
 
+# -------------------------------------------------------------------
+# System Evaluation
+# -------------------------------------------------------------------
+        with gr.Tab("System Evaluation"):
+            eval_btn = gr.Button("Run System Benchmark", variant="primary")
+            with gr.Row():
+                metrics_summary = gr.Markdown("Click run to generate metrics.")
+            eval_table = gr.Dataframe(visible=False)
+            eval_btn.click(fn=run_evaluation, outputs=[eval_table, metrics_summary])
+            with gr.Accordion("Understanding Evaluation Metrics", open=False):
+                gr.Markdown("""
+                ### Evaluation Metrics Descriptions
+                * **Recall@K**: Measures the ability of the system to find *at least one* relevant item in the top *K* results. It indicates the "coverage" of your search.
+                * **mAP (Mean Average Precision)**: The average of precision scores calculated at the rank of each relevant item. It penalizes systems that push relevant items further down the list.
+                * **nDCG (Normalized Discounted Cumulative Gain)**: A ranking quality metric. It accounts for the *position* of relevant items, assigning more "gain" to items retrieved at the very top (rank 1) compared to those at the bottom (rank 10).
+                * **Latency (ms)**: The round-trip time for a query, measuring system responsiveness.
+                """)
+                gr.Markdown("""
+                ### Metric Interpretation Guide
+                | Metric | Score = 1 (Best) | Score = 0 (Worst) | What "High" vs "Low" Means |
+                | :--- | :--- | :--- | :--- |
+                | **Recall@K** | Found at least one match. | Found zero matches. | **Higher** is better (Coverage). |
+                | **mAP** | Perfect ranking/precision. | No relevant results found. | **Higher** is better (Retrieval Quality). |
+                | **nDCG** | Perfect ordering of results. | No relevant results found. | **Higher** is better (Ranking Sensitivity). |
+                | **Latency** | N/A | N/A | **Lower** is better (Speed). |
+
+                **Note on Latency:** Unlike accuracy metrics, Latency is a performance metric. A "high" score here is actually **bad** (it indicates system lag). You want this number as close to 0ms as possible.
+                """)
+
 if __name__ == "__main__":
     shared_device, shared_model, shared_processor = settings.initialize_model()
     
@@ -211,5 +262,9 @@ if __name__ == "__main__":
 
     search_backend = Searcher(shared_device, shared_model, shared_processor)
     graph_backend = Grapher(shared_device, shared_model, shared_processor, search_backend)
+
+    # TODO: need a better way to store csv_path...
+    print("Checking for existing ground truth...")
+    initialize_ground_truth("../flickr30k_images/results.csv", "test_images")
 
     app.launch(server_name="127.0.0.1", server_port=7860, share=True)
