@@ -161,6 +161,33 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Local Image Search", fill_height=T
             offset_input.submit(fn=generate_graph, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
 
 # -------------------------------------------------------------------
+# System Evaluation
+# -------------------------------------------------------------------
+        with gr.Tab("System Evaluation"):
+            eval_btn = gr.Button("Run System Benchmark", variant="primary")
+            with gr.Row():
+                metrics_summary = gr.Markdown("Click run to generate metrics.")
+            eval_table = gr.Dataframe(visible=False)
+            eval_btn.click(fn=run_evaluation, outputs=[eval_table, metrics_summary])
+            with gr.Accordion("Understanding Evaluation Metrics", open=False):
+                gr.Markdown("""
+                ### Evaluation Metrics Descriptions
+                * **Recall@K**: Measures the ability of the system to find *at least one* relevant item in the top *K* results. It indicates the "coverage" of your search.
+                * **mAP (Mean Average Precision)**: The average of precision scores calculated at the rank of each relevant item. It penalizes systems that push relevant items further down the list.
+                * **nDCG (Normalized Discounted Cumulative Gain)**: A ranking quality metric. It accounts for the *position* of relevant items, assigning more "gain" to items retrieved at the very top (rank 1) compared to those at the bottom (rank 10).
+                * **Latency (ms)**: The round-trip time for a query, measuring system responsiveness.
+                """)
+                gr.Markdown("""
+                ### Metric Interpretation Guide
+                | Metric | Score = 1 (Best) | Score = 0 (Worst) | What "High" vs "Low" Means |
+                | :--- | :--- | :--- | :--- |
+                | **Recall@K** | Found at least one match. | Found zero matches. | **Higher** is better (Coverage). |
+                | **mAP** | Perfect ranking/precision. | No relevant results found. | **Higher** is better (Retrieval Quality). |
+                | **nDCG** | Perfect ordering of results. | No relevant results found. | **Higher** is better (Ranking Sensitivity). |
+                | **Latency** | N/A | N/A | **Lower** is better (Speed). |
+                """)
+
+# -------------------------------------------------------------------
 # Settings
 # -------------------------------------------------------------------
         with gr.Tab("Settings"):
@@ -217,33 +244,6 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Local Image Search", fill_height=T
                         fn=lambda: "Success! Settings saved and index rebuilt.", 
                         outputs=[status_text]
                     )
-
-# -------------------------------------------------------------------
-# System Evaluation
-# -------------------------------------------------------------------
-        with gr.Tab("System Evaluation"):
-            eval_btn = gr.Button("Run System Benchmark", variant="primary")
-            with gr.Row():
-                metrics_summary = gr.Markdown("Click run to generate metrics.")
-            eval_table = gr.Dataframe(visible=False)
-            eval_btn.click(fn=run_evaluation, outputs=[eval_table, metrics_summary])
-            with gr.Accordion("Understanding Evaluation Metrics", open=False):
-                gr.Markdown("""
-                ### Evaluation Metrics Descriptions
-                * **Recall@K**: Measures the ability of the system to find *at least one* relevant item in the top *K* results. It indicates the "coverage" of your search.
-                * **mAP (Mean Average Precision)**: The average of precision scores calculated at the rank of each relevant item. It penalizes systems that push relevant items further down the list.
-                * **nDCG (Normalized Discounted Cumulative Gain)**: A ranking quality metric. It accounts for the *position* of relevant items, assigning more "gain" to items retrieved at the very top (rank 1) compared to those at the bottom (rank 10).
-                * **Latency (ms)**: The round-trip time for a query, measuring system responsiveness.
-                """)
-                gr.Markdown("""
-                ### Metric Interpretation Guide
-                | Metric | Score = 1 (Best) | Score = 0 (Worst) | What "High" vs "Low" Means |
-                | :--- | :--- | :--- | :--- |
-                | **Recall@K** | Found at least one match. | Found zero matches. | **Higher** is better (Coverage). |
-                | **mAP** | Perfect ranking/precision. | No relevant results found. | **Higher** is better (Retrieval Quality). |
-                | **nDCG** | Perfect ordering of results. | No relevant results found. | **Higher** is better (Ranking Sensitivity). |
-                | **Latency** | N/A | N/A | **Lower** is better (Speed). |
-                """)
 
 if __name__ == "__main__":
     shared_device, shared_model, shared_processor = settings.initialize_model()
