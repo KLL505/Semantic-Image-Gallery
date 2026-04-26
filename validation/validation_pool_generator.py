@@ -32,7 +32,7 @@ def export_validation_candidates(searcher, queries, output_csv="validation_pool.
         for res in results:
             candidates.append({
                 "query": query,
-                "filename": 'validation_images/' + os.path.basename(res),
+                "filename": '../validation_images/' + os.path.basename(res),
                 "is_relevant": 0  # Default to 0
             })
     
