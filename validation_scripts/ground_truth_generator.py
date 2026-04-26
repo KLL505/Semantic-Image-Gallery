@@ -26,4 +26,4 @@ def compile_verified_gt(csv_path="validation_pool.csv", output_json="ground_trut
     print(f"Compiled Ground Truth with {len(verified)} verified images to {output_json}.")
 
 # Run this once
-# compile_verified_gt()
+compile_verified_gt()

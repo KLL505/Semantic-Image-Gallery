@@ -9,7 +9,7 @@ class Settings:
         
         # Defaults
         self.default_model = "openai/clip-vit-base-patch32"
-        self.default_img_dir = "./validation_images" # we need to use the folder with 3000 flicker images
+        self.default_img_dir = "./images"
         self.default_max_results_empty = 50
         self.default_batch_size = 32
         self.default_max_index_images = 3000

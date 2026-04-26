@@ -41,4 +41,4 @@ def export_validation_candidates(searcher, queries, output_csv="validation_pool.
     print(f"Exported {len(candidates)} candidates to {output_csv}. Open this in Excel/Sheets to label.")
 
 # Run this once
-# export_validation_candidates(search_backend, queries)
+export_validation_candidates(search_backend, queries)
