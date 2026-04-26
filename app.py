@@ -68,7 +68,7 @@ def generate_graph(x_text, y_text, offset):
     return html_plot
 
 def run_evaluation():
-    with open("validation/ground_truth.json", "r") as f:
+    with open("validation_scripts/ground_truth.json", "r") as f:
         gt = json.load(f)
     evaluator = SystemEvaluator(search_backend)
     df, latencies = evaluator.run_benchmark(gt)
