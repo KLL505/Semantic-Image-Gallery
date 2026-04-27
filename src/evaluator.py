@@ -65,7 +65,9 @@ class SystemEvaluator:
                 "Latency (ms)": round(latency_ms, 2),
                 "Recall@5": recall_at_5,
                 "mAP": round(map_val, 3),
-                "nDCG": round(ndcg, 3)
+                "nDCG": round(ndcg, 3),
+                "Ground Truth Count": len(relevant),
+                "Retrieved": len(norm_results)
             })
 
         return pd.DataFrame(metrics), latencies

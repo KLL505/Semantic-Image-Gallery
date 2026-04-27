@@ -214,5 +214,24 @@
             "146906547.jpg",
             "187907408.jpg"
         ]
+    },
+    {
+        "query": "girl in pink holding a blue baseball bat",
+        "relevant_paths": [
+            "49408622.jpg"
+        ]
+    },
+    {
+        "query": "girl in yellow shirts and skirts plays tennis",
+        "relevant_paths": [
+            "23016250.jpg",
+            "23016347.jpg"
+        ]
+    },
+    {
+        "query": "man playing jenga with the tower falling",
+        "relevant_paths": [
+            "239112510.jpg"
+        ]
     }
 ]

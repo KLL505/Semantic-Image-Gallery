@@ -2,7 +2,7 @@ import pandas as pd
 import json
 import os
 
-def compile_verified_gt(csv_path="validation_pool.csv", output_json="ground_truth.json"):
+def compile_verified_gt(csv_path="validation_scripts/validation_pool.csv", output_json="validation_scripts/ground_truth.json"):
     # Ensure directory exists
     os.makedirs("data", exist_ok=True)
     
