@@ -3,3 +3,5 @@
 .vscode
 /data
 test_images/
+validation_images/
+.DS_Store
