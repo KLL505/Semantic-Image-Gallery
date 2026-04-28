@@ -216,20 +216,32 @@
         ]
     },
     {
-        "query": "girl in pink holding a blue baseball bat",
+        "query": "A little girl in a pink floral dress holding a blue baseball bat outside on the grass",
         "relevant_paths": [
             "49408622.jpg"
         ]
     },
     {
-        "query": "girl in yellow shirts and skirts plays tennis",
+        "query": "A woman in a white jacket and yellow skirt playing tennis on an orange court",
         "relevant_paths": [
             "23016250.jpg",
             "23016347.jpg"
         ]
     },
     {
-        "query": "man playing jenga with the tower falling",
+        "query": "A black and white dog holding a stick swimming in muddy water",
+        "relevant_paths": [
+            "241109594.jpg"
+        ]
+    },
+    {
+        "query": "A family of nine people in a green grassy field holding a flag that says PEACE KNITS",
+        "relevant_paths": [
+            "4386588.jpg"
+        ]
+    },
+    {
+        "query": "A man in a yellow room playing jenga on a brown table with the tower falling",
         "relevant_paths": [
             "239112510.jpg"
         ]

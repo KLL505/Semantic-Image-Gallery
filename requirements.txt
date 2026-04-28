@@ -1,5 +1,6 @@
 torch
 pandas
+scikit-learn
 transformers==4.57.3
 pillow==11.3.0
 faiss-cpu==1.13.2

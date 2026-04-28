@@ -14,12 +14,8 @@ settings = Settings()
 def format_gallery_results(paths, all_paths):
     results = []
     for path in paths:
-        try:
-            idx = all_paths.index(path)
-        except ValueError:
-            idx = "?"
         filename = os.path.basename(path)
-        caption = f"{filename} | {idx} "
+        caption = f"{filename}"
         results.append((path, caption))
     info_txt = f"<div style='text-align: right; font-size: 0.9em; color: #6b7280; padding-top: 4px; padding-right: 8px;'>Model: {settings.current_model_id} | Total Images: {min(settings.max_index_images ,len(all_paths))}</div>"
     return results, info_txt
@@ -73,8 +69,8 @@ def run_evaluation():
     evaluator = SystemEvaluator(search_backend)
     df, latencies = evaluator.run_benchmark(gt)
     print('df',df)
-    avg_map = df['mAP'].mean()
-    avg_latency = df['Latency (ms)'].mean()
+    avg_map = df['mAP '].mean()
+    avg_latency = df['Latency(ms)'].mean()
     latency_std = np.std(latencies)
     qps = 1000 / avg_latency if avg_latency > 0 else 0
     summary = (
@@ -83,13 +79,21 @@ def run_evaluation():
         f"- **Mean Latency:** {avg_latency:.2f} ms (±{latency_std:.2f}ms)\n"
         f"- **System Throughput:** {qps:.2f} Queries/Sec"
     )
-    return gr.Dataframe(value=df, visible=True), summary
+    
+    if df is None or df.empty:
+        return gr.DownloadButton(visible=False)
+    model_name = settings.current_model_id.replace("/", "_")
+    file_path = f"./data/evaluation_{model_name}.csv"
+    df.to_csv(file_path, index=False)
+
+    return gr.Dataframe(value=df, visible=True), gr.DownloadButton(value=file_path, visible=True), summary
+
 
 # -------------------------------------------------------------------
 # Gradio Interface
 # -------------------------------------------------------------------
-with gr.Blocks(theme=gr.themes.Soft(), title="Local Image Search", fill_height=True) as app:
-    gr.Markdown("# Local Semantic Image Search")
+with gr.Blocks(theme=gr.themes.Soft(), title="Semaintic Image Gallery", fill_height=True) as app:
+    gr.Markdown("# Semantic Image Gallery")
 
 # -------------------------------------------------------------------
 # Search
@@ -164,18 +168,25 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Local Image Search", fill_height=T
 # System Evaluation
 # -------------------------------------------------------------------
         with gr.Tab("System Evaluation"):
-            eval_btn = gr.Button("Run System Benchmark", variant="primary")
+
             with gr.Row():
+                eval_btn = gr.Button("Run System Benchmark", variant="primary")
+                export_btn = gr.DownloadButton("Export Results to CSV", visible=False)
                 metrics_summary = gr.Markdown("Click run to generate metrics.")
-            eval_table = gr.Dataframe(visible=False)
-            eval_btn.click(fn=run_evaluation, outputs=[eval_table, metrics_summary])
-            with gr.Accordion("Understanding Evaluation Metrics", open=False):
+            eval_table = gr.Dataframe(visible=False, max_height=1000)
+
+            eval_btn.click(
+                fn=run_evaluation, 
+                outputs=[eval_table, export_btn, metrics_summary]
+            )
+
+            with gr.Accordion("Understanding Evaluation Metrics", open=True):
                 gr.Markdown("""
                 ### Evaluation Metrics Descriptions
                 * **Recall@K**: Measures the ability of the system to find *at least one* relevant item in the top *K* results. It indicates the "coverage" of your search.
                 * **mAP (Mean Average Precision)**: The average of precision scores calculated at the rank of each relevant item. It penalizes systems that push relevant items further down the list.
                 * **nDCG (Normalized Discounted Cumulative Gain)**: A ranking quality metric. It accounts for the *position* of relevant items, assigning more "gain" to items retrieved at the very top (rank 1) compared to those at the bottom (rank 10).
-                * **Latency (ms)**: The round-trip time for a query, measuring system responsiveness.
+                * **Latency(ms)**: The round-trip time for a query, measuring system responsiveness.
                 """)
                 gr.Markdown("""
                 ### Metric Interpretation Guide

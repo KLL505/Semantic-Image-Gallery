@@ -26,7 +26,7 @@ class SystemEvaluator:
         
         return score / len(relevant_filenames)
 
-    def run_benchmark(self, ground_truth, top_k=50):
+    def run_benchmark(self, ground_truth, top_k=20):
         # Run this to prevent warm-up/cold start delay which will result in the first query having a large latency
         self.warm_up()
 
@@ -35,7 +35,7 @@ class SystemEvaluator:
 
         for item in ground_truth:
             query = item['query']
-            relevant = item['relevant_paths'] # These are filenames e.g. "101.jpg"
+            relevant = item['relevant_paths'] 
 
             # Capture start and end time when we run a query
             start_time = time.perf_counter()
@@ -62,12 +62,11 @@ class SystemEvaluator:
 
             metrics.append({
                 "Query": query,
-                "Latency (ms)": round(latency_ms, 2),
+                "Latency(ms)": round(latency_ms, 2),
                 "Recall@5": recall_at_5,
-                "mAP": round(map_val, 3),
+                "mAP ": round(map_val, 3),
                 "nDCG": round(ndcg, 3),
                 "Ground Truth Count": len(relevant),
-                "Retrieved": len(norm_results)
             })
 
         return pd.DataFrame(metrics), latencies
