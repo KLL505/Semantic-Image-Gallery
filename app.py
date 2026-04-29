@@ -30,28 +30,22 @@ def perform_search(text_query, image_query, top_k):
     return format_gallery_results(paths, search_backend.image_paths)
 
 def rebuild_index():
+    global index_backend, search_backend, graph_backend
+    device, model, processor = settings.initialize_model(settings.current_model_id)
+    
+    index_backend = Indexer(device, model, processor, settings.img_dir)
+    search_backend = Searcher(device, model, processor)
+    graph_backend = Grapher(device, model, processor, search_backend)
+
     index_backend.build_Index(settings.batch_size, settings.max_index_images)
     search_backend.reload_index()
     
     paths = search_backend.image_paths[:settings.max_results_empty]
     
-    return format_gallery_results(paths, paths)
+    return format_gallery_results(paths, search_backend.image_paths)
 
 def change_settings_and_rebuild(new_model_id, img_dir, empty_max, batch_size, max_index, max_graph):
-    global index_backend, search_backend, graph_backend
-    
-    if not new_model_id or not new_model_id.strip():
-        new_model_id = "openai/clip-vit-base-patch32"
-        
-    new_model_id = new_model_id.strip()
-    
     settings.save_settings(new_model_id, img_dir, empty_max, batch_size, max_index, max_graph)
-    device, model, processor = settings.initialize_model(new_model_id)
-    
-    index_backend = Indexer(device, model, processor, settings.img_dir)
-    search_backend = Searcher(device, model, processor)
-    graph_backend = Grapher(device, model, processor, search_backend)
-    
     return rebuild_index()
 
 
@@ -89,12 +83,13 @@ def run_evaluation():
 
     return gr.Dataframe(value=df, visible=True), gr.DownloadButton(value=file_path, visible=True), summary
 
-
 # -------------------------------------------------------------------
 # Gradio Interface
 # -------------------------------------------------------------------
 with gr.Blocks(theme=gr.themes.Soft(), title="Semaintic Image Gallery", fill_height=True) as app:
-    gr.Markdown("# Semantic Image Gallery")
+    with gr.Row():
+        gr.Markdown("# Semantic Image Gallery")
+        info_txt = gr.HTML()
 
 # -------------------------------------------------------------------
 # Search
@@ -135,22 +130,21 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Semaintic Image Gallery", fill_hei
                         height="85vh", 
                         interactive=False
                     )
-                    total_count_display = gr.HTML()
-
+                    
             # Search
-            search_btn.click(fn=perform_search, inputs=[search_query, image_query, top_k_slider], outputs=[results_gallery, total_count_display])
-            search_query.submit(fn=perform_search, inputs=[search_query, image_query, top_k_slider], outputs=[results_gallery, total_count_display])
+            search_btn.click(fn=perform_search, inputs=[search_query, image_query, top_k_slider], outputs=[results_gallery, info_txt])
+            search_query.submit(fn=perform_search, inputs=[search_query, image_query, top_k_slider], outputs=[results_gallery, info_txt])
             
             # Rebuild
-            rebuild_btn.click(fn=rebuild_index, inputs=[], outputs=[results_gallery, total_count_display])
+            rebuild_btn.click(fn=rebuild_index, inputs=[], outputs=[results_gallery, info_txt])
 
             # Initial load sends blank search to show all images
-            app.load(fn=perform_search, inputs=[search_query, image_query, top_k_slider], outputs=[results_gallery, total_count_display]) 
+            app.load(fn=perform_search, inputs=[search_query, image_query, top_k_slider], outputs=[results_gallery, info_txt]) 
 
 # -------------------------------------------------------------------
 # Graph
 # -------------------------------------------------------------------
-        with gr.Tab("Latent Space Graph"):
+        with gr.Tab("Graph View"):
             with gr.Row():
                 x_axis_input = gr.Textbox(label="X-Axis",placeholder="Nature", scale=2)
                 y_axis_input = gr.Textbox(label="Y-Axis",placeholder="Industrial", scale=2)
@@ -251,7 +245,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Semaintic Image Gallery", fill_hei
                         fn=change_settings_and_rebuild, 
                         # Be sure to pass all inputs here!
                         inputs=[model_input, img_dir_input, empty_max_input, batch_size_input, max_index_input, max_graph_input], 
-                        outputs=[results_gallery, total_count_display]
+                        outputs=[results_gallery, info_txt]
                     ).then(
                         fn=lambda: "Success! Settings saved and index rebuilt.", 
                         outputs=[status_text]
