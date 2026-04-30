@@ -1,4 +1,4 @@
-# Semantic Image Search
+# Semantic Image Gallery
 
 **Final Project for CS 6384 Computer Vision**: A search engine that uses **CLIP (Contrastive Language-Image Pretraining)** and **FAISS** to perform semantic searches on local image datasets.
 
