@@ -100,10 +100,10 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Semaintic Image Gallery", fill_hei
         info_txt = gr.HTML()
 
 # -------------------------------------------------------------------
-# Search
+# Gallery
 # -------------------------------------------------------------------    
     with gr.Tabs():
-        with gr.Tab("Semantic Search"):
+        with gr.Tab("Gallery"):
             with gr.Row():
                 with gr.Column(scale=1, variant="panel"):
                     search_query = gr.Textbox(
@@ -157,7 +157,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Semaintic Image Gallery", fill_hei
             app.load(fn=perform_search, inputs=[search_query, image_query, top_k_slider], outputs=[results_gallery, info_txt]) 
 
 # -------------------------------------------------------------------
-# Graph
+# Graph View
 # -------------------------------------------------------------------
         with gr.Tab("Graph View"):
             with gr.Row():
@@ -175,12 +175,12 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Semaintic Image Gallery", fill_hei
             offset_input.submit(fn=generate_graph, inputs=[x_axis_input, y_axis_input, offset_input], outputs=latent_plot)
 
 # -------------------------------------------------------------------
-# System Evaluation
+# Model Benchmark
 # -------------------------------------------------------------------
-        with gr.Tab("System Evaluation"):
+        with gr.Tab("Model Benchmark"):
 
             with gr.Row():
-                eval_btn = gr.Button("Run System Benchmark", variant="primary")
+                eval_btn = gr.Button("Run Model Benchmark", variant="primary")
                 export_btn = gr.DownloadButton("Export Results to CSV", visible=False)
                 metrics_summary = gr.Markdown("Click run to generate metrics.")
             eval_table = gr.Dataframe(visible=False, max_height=1000)
@@ -218,7 +218,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Semaintic Image Gallery", fill_hei
                             model_input = gr.Textbox(
                                 label="Hugging Face Model ID", 
                                 value=settings.current_model_id, 
-                                info="Warning: Changing the model will completely overwrite your current FAISS database."
+                                info="Embedding model used for indexing and searching. Warning: Changing the model will completely overwrite your current FAISS database."
                             )
                             img_dir_input = gr.Textbox(
                                 label="Image Directoy Path", 
@@ -229,13 +229,13 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Semaintic Image Gallery", fill_hei
                                 label="Max Results on Empty Search",
                                 value=settings.max_results_empty,
                                 precision=0,
-                                info="How many images to display when the search query is blank."
+                                info="How many images to display per page when the search query is blank."
                             )
                             batch_size_input = gr.Number(
                                 label="Index Batch Size",
                                 value=settings.batch_size,
                                 precision=0,
-                                info="Number of images to process at once. Lower this if your GPU runs out of memory."
+                                info="Number of images to process at once while indexing. Lower this if your GPU runs out of memory."
                             )
                             max_index_input = gr.Number(
                                 label="Max Images to Index",
@@ -258,7 +258,6 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Semaintic Image Gallery", fill_hei
                         outputs=[status_text]
                     ).then(
                         fn=change_settings_and_rebuild, 
-                        # Be sure to pass all inputs here!
                         inputs=[model_input, img_dir_input, empty_max_input, batch_size_input, max_index_input, max_graph_input], 
                         outputs=[results_gallery, info_txt]
                     ).then(
