@@ -72,15 +72,15 @@ def run_evaluation():
     df, latencies = evaluator.run_benchmark(gt)
     print('df',df)
     avg_map = df['mAP '].mean()
+    avg_ndcg = df['nDCG'].mean()
     avg_latency = df['Latency(ms)'].mean()
     latency_std = np.std(latencies)
-    qps = 1000 / avg_latency if avg_latency > 0 else 0
     summary = (
         f"### System Performance Summary\n"
         f"- **Model:** {settings.current_model_id}\n"
-        f"- **Mean mAP:** {avg_map:.3f}\n"
         f"- **Mean Latency:** {avg_latency:.2f} ms (±{latency_std:.2f}ms)\n"
-        f"- **System Throughput:** {qps:.2f} Queries/Sec"
+        f"- **Mean mAP:** {avg_map:.3f}\n"
+        f"- **Mean nDCG:** {avg_ndcg:.3f}\n"
     )
     
     model_name = settings.current_model_id.replace("/", "_")
