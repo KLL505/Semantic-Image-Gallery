@@ -20,7 +20,6 @@ class Indexer:
 
     #Builds paths file by scanning image directory for supported formats and saving their paths to a JSON file.
     def build_paths(self):
-        #Check for directory first
         if not os.path.exists(self.image_dir):
             os.makedirs(self.image_dir)
 

@@ -22,12 +22,12 @@ class Searcher:
     :top_k: number
     :return: list of image paths
     '''
-    def search(self, query, top_k=3, maximum_images=50):
-        print(f"Recieved query='{query}' and top_k={top_k}")
+    def search(self, query, top_k=3, maximum_images=50, offset=0):
+        print(f"query={query} | top_k={top_k}")
 
         # base case: if the search query is empty, show everything
         if query is None or (isinstance(query, str) and not query.strip()):
-            return self.image_paths[:maximum_images]
+            return self.image_paths[offset:offset + maximum_images]
     
         # base case: if the embedding index is empty, show nothing
         if self.embedding_index is None:

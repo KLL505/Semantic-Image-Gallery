@@ -10,7 +10,6 @@ class SystemEvaluator:
 
     @staticmethod
     def calculate_map(retrieved_paths, relevant_paths):
-       # We strip paths here too just to be safe
         retrieved_filenames = [os.path.basename(p) for p in retrieved_paths]
         relevant_filenames = [os.path.basename(p) for p in relevant_paths]
 

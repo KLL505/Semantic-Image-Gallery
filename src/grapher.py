@@ -9,7 +9,6 @@ class Grapher:
         self.searcher = searcher
 
     def generate_plot_data(self, x_axis_text, y_axis_text, offset=0, max_graph_images=500):
-        # Base case: missing inputs or empty database
         if not x_axis_text or not y_axis_text:
             return pd.DataFrame() 
         if self.searcher.embedding_index is None or self.searcher.embedding_index.ntotal == 0:
